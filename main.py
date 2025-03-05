@@ -1,24 +1,22 @@
 import os
-from pathlib import Path
 import cv2
-from io import BytesIO
-from flask import Flask, jsonify, logging, request, send_from_directory
+from flask import Flask, jsonify, logging, request, send_from_directory, send_file
 from flask_cors import CORS
 from PIL import Image
-from config import config
-from detector import detect, load_model
+from detector import detect, load_model, load_text2speech_model
 from utils import *
 from werkzeug.utils import secure_filename
+import torch
+import scipy
+
 # create app backend
 app = Flask(__name__)
 CORS(app)
-model = load_model()
-config()
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["ALLOWED_EXTENSIONS"] = {"png", "jpg", "jpeg"}
+model = load_model()
+tts_model, tts_tokenizer = load_text2speech_model()
+
+config(app)
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
@@ -50,9 +48,7 @@ def detect_objects():
             
             filename = filename.lower()
             save_ext = file_extension(filename)
-            print(save_ext)
             save_path = filepath.replace(save_ext, f"_detection{save_ext}")
-            print(save_path)
             detection_results = detect(image, model, save_path)
 
             # bboxes = []
@@ -82,9 +78,17 @@ def converttts():
             return jsonify({"error": "Message is required"}), 400
 
         message = data["message"]
-        messages.append(message)
+        inputs = tts_tokenizer(message, return_tensors="pt")
 
-        return jsonify({"message": "Message received", "content": message}), 200
+        with torch.no_grad():
+            output = model(**inputs).waveform
+            
+        filename = f"{uuid.uuid4().hex}.wav"
+        filepath = os.path.join(app.config["AUDIO_FOLDER"], filename)
+        
+        scipy.io.wavfile.write(filepath, rate=model.config.sampling_rate, data=output)
+        
+        return send_file(filepath, as_attachment=True, download_name=filename, mimetype="audio/wav")
     except Exception as e:
         print(f"Error processing image: {e}")
         return f"Error processing image: {e}", 500

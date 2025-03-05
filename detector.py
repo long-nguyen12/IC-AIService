@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import cv2
 from ultralytics import YOLO
+from transformers import VitsModel, AutoTokenizer
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -39,3 +40,8 @@ def detect(frame, model, filename):
         return bboxes
     except Exception as e:
         print(e)
+
+def load_text2speech_model():
+    model = VitsModel.from_pretrained("facebook/mms-tts-vie")
+    tokenizer = AutoTokenizer.from_pretrained("facebook/mms-tts-vie")
+    return model, tokenizer
