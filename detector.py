@@ -14,7 +14,8 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 def load_model():
     """Load a model from a file."""
-    model = YOLO("weights/yolov8s-oiv7.onnx", task="detect")
+    # model = YOLO("weights/yolov8s-oiv7.onnx", task="detect")
+    model = YOLO("weights/yolov8m-oiv7.pt")
     return model
 
 

@@ -8,8 +8,10 @@ from utils import *
 from werkzeug.utils import secure_filename
 import torch
 import scipy
+import numpy as np
+from voice_generator import generate_voice
+from caption_generator import generate_cation
 
-# create app backend
 app = Flask(__name__)
 CORS(app)
 
@@ -78,21 +80,67 @@ def converttts():
             return jsonify({"error": "Message is required"}), 400
 
         message = data["message"]
-        inputs = tts_tokenizer(message, return_tensors="pt")
+        # inputs = tts_tokenizer(message, return_tensors="pt")
 
-        with torch.no_grad():
-            output = model(**inputs).waveform
+        # with torch.no_grad():
+        #     output = tts_model(**inputs)
             
+        # waveform = output.waveform[0]
+        # data_np = waveform.numpy()
+        # data_np_squeezed = np.squeeze(data_np)
+
+        # filename = f"{uuid.uuid4().hex}.wav"
+        # filepath = os.path.join(app.config["AUDIO_FOLDER"], filename)
+        
+        # scipy.io.wavfile.write(filepath, rate=tts_model.config.sampling_rate, data=data_np_squeezed)
+        
         filename = f"{uuid.uuid4().hex}.wav"
         filepath = os.path.join(app.config["AUDIO_FOLDER"], filename)
+        try:
+            generate_voice(filepath, message)
+        except Exception as e:
+            print(f"Error generating voice: {e}")
+            return jsonify({"error": "Failed to generate voice"}), 500
         
-        scipy.io.wavfile.write(filepath, rate=model.config.sampling_rate, data=output)
-        
-        return send_file(filepath, as_attachment=True, download_name=filename, mimetype="audio/wav")
+        return jsonify({"audio_file": str(filename)})
     except Exception as e:
         print(f"Error processing image: {e}")
         return f"Error processing image: {e}", 500
 
+
+@app.route("/v1/api/audio/<filename>", methods=["GET"])
+def get_audio(filename):        
+    filepath = os.path.join(app.config["AUDIO_FOLDER"], filename)
+    return send_file(filepath, as_attachment=True, download_name=filename, mimetype="audio/wav")
+
+
+@app.route("/v1/api/image2text", methods=["POST"])
+def image2text():
+    if "file" not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files["file"]
+    
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config["CAPTION_FOLDER"], filename)
+            file.save(filepath)
+            try:
+                caption = generate_cation(filepath)
+            except Exception as e:
+                print(f"Error generating caption: {e}")
+                return jsonify({"error": "Failed to generate caption"}), 500
+            
+            return jsonify({"generated_text": caption})
+
+            # return jsonify({"generated_text": str("Đây là văn bản sinh ra từ hình ảnh đã tải lên")})
+    except Exception as e:
+        print(f"Error processing image: {e}")
+        return f"Error processing image: {e}", 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
