@@ -2,13 +2,9 @@ import os
 import cv2
 from flask import Flask, jsonify, logging, request, send_from_directory, send_file
 from flask_cors import CORS
-from PIL import Image
 from detector import detect, load_model, load_text2speech_model
 from utils import *
 from werkzeug.utils import secure_filename
-import torch
-import scipy
-import numpy as np
 from voice_generator import generate_voice
 from caption_generator import generate_cation
 
@@ -23,19 +19,11 @@ config(app)
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_EXTENSIONS"]
 
-
-@app.route("/")
-def hello():
-    return "Hello World!"
-
-
 @app.route("/v1/api/detection", methods=["POST"])
 def detect_objects():
     if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
-    
     file = request.files["file"]
-    
     if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
 
@@ -53,14 +41,14 @@ def detect_objects():
             save_path = filepath.replace(save_ext, f"_detection{save_ext}")
             detection_results = detect(image, model, save_path)
 
-            # bboxes = []
-            # for result_dict in detection_results:
-            #     bbox_from_dict = BBox(
-            #                 box=result_dict["box"],
-            #                 conf=result_dict["conf"],
-            #                 class_id=result_dict["class_id"],
-            #                 class_name=result_dict["class_name"])
-            #     bboxes.append(bbox_from_dict)
+            bboxes = []
+            for result_dict in detection_results:
+                bbox_from_dict = BBox(
+                            box=result_dict["box"],
+                            conf=result_dict["conf"],
+                            class_id=result_dict["class_id"],
+                            class_name=result_dict["class_name"])
+                bboxes.append(bbox_from_dict)
 
             return jsonify({"dectect_path": str(save_path)})
     except Exception as e:
@@ -80,19 +68,6 @@ def converttts():
             return jsonify({"error": "Message is required"}), 400
 
         message = data["message"]
-        # inputs = tts_tokenizer(message, return_tensors="pt")
-
-        # with torch.no_grad():
-        #     output = tts_model(**inputs)
-            
-        # waveform = output.waveform[0]
-        # data_np = waveform.numpy()
-        # data_np_squeezed = np.squeeze(data_np)
-
-        # filename = f"{uuid.uuid4().hex}.wav"
-        # filepath = os.path.join(app.config["AUDIO_FOLDER"], filename)
-        
-        # scipy.io.wavfile.write(filepath, rate=tts_model.config.sampling_rate, data=data_np_squeezed)
         
         filename = f"{uuid.uuid4().hex}.wav"
         filepath = os.path.join(app.config["AUDIO_FOLDER"], filename)
@@ -134,10 +109,7 @@ def image2text():
             except Exception as e:
                 print(f"Error generating caption: {e}")
                 return jsonify({"error": "Failed to generate caption"}), 500
-            
             return jsonify({"generated_text": caption})
-
-            # return jsonify({"generated_text": str("Đây là văn bản sinh ra từ hình ảnh đã tải lên")})
     except Exception as e:
         print(f"Error processing image: {e}")
         return f"Error processing image: {e}", 500

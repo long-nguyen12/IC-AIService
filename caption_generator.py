@@ -18,7 +18,7 @@ def generate_cation(image_path):
                 data=image_bytes,
                 mime_type='image/jpeg',
             ),
-            "Sinh mô tả khoảng 15-20 từ cho bức ảnh này. Đầu ra chỉ bao gồm dòng mô tả."
+            "Sinh mô tả khoảng 15-20 từ bằng tiếng Việt cho bức ảnh. Đầu ra chỉ bao gồm dòng mô tả."
         ]
     )
 

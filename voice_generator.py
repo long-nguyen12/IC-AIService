@@ -7,7 +7,6 @@ load_dotenv()
 
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key)
-print("API Key:", api_key)
 
 
 def wave_file(filename, pcm, channels=1, rate=24000, sample_width=2):
